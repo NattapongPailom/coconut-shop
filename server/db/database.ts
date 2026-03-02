@@ -1,12 +1,14 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
 import logger from '../utils/logger.js';
 
-if (!existsSync('data')) {
-  mkdirSync('data', { recursive: true });
-}
-
 const dbPath = process.env.DATABASE_PATH || './data/shop.db';
+const dbDir = dirname(dbPath);
+
+if (!existsSync(dbDir)) {
+  mkdirSync(dbDir, { recursive: true });
+}
 const db = new Database(dbPath);
 
 // Enable WAL mode for better concurrency and performance
