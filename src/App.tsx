@@ -164,14 +164,22 @@ function App() {
 
   // ─── Derived State ──────────────────────────────────────────────────────────
 
+  const hasDrink = (o: Order) => o.items.some((i) => i.unit === 'แก้ว');
+  const hasSolid = (o: Order) => o.items.some((i) => i.unit === 'กก.');
+
   const waitingOrders = orders
     .filter((o) => o.status === 'waiting')
-    .sort((a, b) => b.priorityScore - a.priorityScore || 
+    .sort((a, b) => b.priorityScore - a.priorityScore ||
                     new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   const makingOrders = orders
     .filter((o) => o.status === 'making')
     .sort((a, b) => b.priorityScore - a.priorityScore);
+
+  const drinkWaiting = waitingOrders.filter(hasDrink);
+  const solidWaiting = waitingOrders.filter(hasSolid);
+  const drinkMaking = makingOrders.filter(hasDrink);
+  const solidMaking = makingOrders.filter(hasSolid);
 
   const dailyRevenue = stats?.dailyRevenue ?? 0;
 
@@ -199,22 +207,53 @@ function App() {
           </div>
         ) : (
           <>
-            {/* Priority Section: Making Now */}
-            {makingOrders.length > 0 && (
-              <OrderGrid
-                title="กำลังทำ (Making Now)"
-                orders={makingOrders}
-                onUpdateStatus={handleUpdateStatus}
-              />
-            )}
+            {/* ─── น้ำมะพร้าว Section ─────────────────────────── */}
+            <div className="mb-2">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">🥤</span>
+                <h2 className="text-2xl font-black text-stone-700 tracking-tight">น้ำมะพร้าว</h2>
+                <div className="flex-1 h-0.5 bg-teal-200 rounded" />
+              </div>
 
-            {/* Queue Section: Waiting */}
-            <OrderGrid
-              title="คิวรอทำ (Waiting Queue)"
-              orders={waitingOrders}
-              onUpdateStatus={handleUpdateStatus}
-              emptyMessage="ไม่มีคิวรอ — รอออเดอร์ใหม่"
-            />
+              {drinkMaking.length > 0 && (
+                <OrderGrid
+                  title="กำลังทำ (Making Now)"
+                  orders={drinkMaking}
+                  onUpdateStatus={handleUpdateStatus}
+                />
+              )}
+
+              <OrderGrid
+                title="คิวรอทำ (Waiting Queue)"
+                orders={drinkWaiting}
+                onUpdateStatus={handleUpdateStatus}
+                emptyMessage="ไม่มีคิวรอน้ำ — รอออเดอร์ใหม่"
+              />
+            </div>
+
+            {/* ─── มะพร้าวขูด / กะทิสด Section ───────────────── */}
+            <div className="mb-2">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">🥥</span>
+                <h2 className="text-2xl font-black text-stone-700 tracking-tight">มะพร้าวขูด / กะทิสด</h2>
+                <div className="flex-1 h-0.5 bg-amber-200 rounded" />
+              </div>
+
+              {solidMaking.length > 0 && (
+                <OrderGrid
+                  title="กำลังทำ (Making Now)"
+                  orders={solidMaking}
+                  onUpdateStatus={handleUpdateStatus}
+                />
+              )}
+
+              <OrderGrid
+                title="คิวรอทำ (Waiting Queue)"
+                orders={solidWaiting}
+                onUpdateStatus={handleUpdateStatus}
+                emptyMessage="ไม่มีคิวรอขูด/กะทิ — รอออเดอร์ใหม่"
+              />
+            </div>
 
             {/* History Section */}
             <CompletedOrders orders={completedOrders} />

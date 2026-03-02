@@ -160,7 +160,7 @@ export function buildConfirmationMessage(
     pickupLine,
     ``,
     `🙏 กรุณารอรับสินค้าตามเวลาที่นัดไว้ค่ะ`,
-    `ขอบคุณที่อุดหนุนร้านมะพร้าวหอม 🥥`,
+    `ขอบคุณที่อุดหนุนมะพร้าวเจ๊ประจวบ 🥥`,
   ].join('\n');
 
   return { type: 'text', text };

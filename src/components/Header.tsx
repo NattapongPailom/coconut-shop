@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <h1 className="text-2xl font-bold text-coconut-dark leading-none">
-              ร้านมะพร้าวหอม
+              มะพร้าวเจ๊ประจวบ
             </h1>
             <p className="text-stone-500 text-sm font-medium">{dateString}</p>
           </div>
