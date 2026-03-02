@@ -302,8 +302,6 @@ export function isOrderMessage(text: string): boolean {
 
 export function buildInvalidFormatReply(): string {
   return [
-    '❌ ขออภัย ไม่เข้าใจรายการสั่งซื้อค่ะ',
-    '',
     '📝 กรุณาสั่งในรูปแบบนี้:',
     'ชื่อ: [ชื่อของคุณ]',
     'สั่ง: [ชื่อสินค้า] [จำนวน]',
