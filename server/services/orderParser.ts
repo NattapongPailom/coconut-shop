@@ -97,7 +97,7 @@ const PRODUCTS: ProductDefinition[] = [
 ];
 
 function extractQuantity(text: string, matchEnd: number): number {
-  // Look for a number immediately after the product match (within ~20 chars)
+  // Look for a number immediately after the product match (within ~30 chars)
   const after = text.slice(matchEnd, matchEnd + 30);
 
   // Pattern: x2, ×2, *2, 2แก้ว, 2 แก้ว, 2kg, 2กก, จำนวน 2
@@ -122,6 +122,48 @@ function extractQuantity(text: string, matchEnd: number): number {
   }
 
   return 1;
+}
+
+// Specialized weight parser for kg products (มะพร้าวขูด, กะทิสด)
+// Handles Thai weight expressions: โลครึ่ง, 1 โล 2 ขีด, ครึ่งโล, 3 ขีด, etc.
+// Unit conversions: 1 ขีด = 100g = 0.1 กก., ครึ่ง = 0.5 กก.
+function extractWeightKg(text: string, matchEnd: number): number {
+  // Strip leading whitespace/symbols from the text after the product match
+  const s = text.slice(matchEnd, matchEnd + 50).replace(/^[\s:xX×*]+/, '');
+
+  const UNIT = /(?:โล|กิโล|กิโลกรัม|กก)[.]*/;
+
+  // 1. "ครึ่งโล" / "ครึ่งกิโล" = 0.5 kg
+  if (new RegExp(`^ครึ่ง\\s*${UNIT.source}`).test(s)) return 0.5;
+
+  // 2. "X โลครึ่ง" / "X กิโลครึ่ง" = X + 0.5 kg  (e.g. 1 โลครึ่ง = 1.5)
+  const withHalf = s.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${UNIT.source}\\s*ครึ่ง`));
+  if (withHalf) return parseFloat(withHalf[1]) + 0.5;
+
+  // 3. "โลครึ่ง" / "กิโลครึ่ง" (no leading number) = 1.5 kg
+  if (new RegExp(`^${UNIT.source}\\s*ครึ่ง`).test(s)) return 1.5;
+
+  // 4. "X โล Y ขีด" = X + Y * 0.1 kg  (e.g. 1 โล 2 ขีด = 1.2)
+  const kiloHecto = s.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${UNIT.source}\\s*(\\d+(?:\\.\\d+)?)\\s*ขีด`));
+  if (kiloHecto) return parseFloat(kiloHecto[1]) + parseFloat(kiloHecto[2]) * 0.1;
+
+  // 5. "Y ขีด" only = Y * 0.1 kg  (e.g. 5 ขีด = 0.5)
+  const hectoOnly = s.match(/^(\d+(?:\.\d+)?)\s*ขีด/);
+  if (hectoOnly) return parseFloat(hectoOnly[1]) * 0.1;
+
+  // 6. "ครึ่ง" alone (no unit keyword) = 0.5 kg
+  if (/^ครึ่ง/.test(s)) return 0.5;
+
+  // 7. Plain number (with optional unit suffix): 1.5, 2, 1 กก., 2 กิโล
+  const plain = s.match(/^(\d+(?:\.\d+)?)/);
+  if (plain) return parseFloat(plain[1]);
+
+  // 8. Look before the match as last resort
+  const before = text.slice(Math.max(0, matchEnd - 25), matchEnd);
+  const beforeMatch = before.match(/(\d+(?:\.\d+)?)\s*$/);
+  if (beforeMatch) return parseFloat(beforeMatch[1]);
+
+  return 1; // default 1 kg
 }
 
 function parsePickupTime(text: string): string | null {
@@ -207,7 +249,9 @@ export function parseOrderMessage(rawText: string): ParsedOrder {
       const match = text.match(regex);
       if (match && !found) {
         const matchEnd = (match.index || 0) + match[0].length;
-        const quantity = extractQuantity(text, matchEnd);
+        const quantity = product.unitTh === 'กก.'
+          ? extractWeightKg(text, matchEnd)
+          : extractQuantity(text, matchEnd);
 
         items.push({
           name: `${product.nameTh} (${product.nameEn})`,
