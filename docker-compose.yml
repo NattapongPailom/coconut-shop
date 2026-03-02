@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  # ─── Coconut Shop Manager (All-in-one) ──────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: coconut-shop
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      DATABASE_PATH: /app/data/shop.db
+      LINE_CHANNEL_SECRET: ${LINE_CHANNEL_SECRET}
+      LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Persist SQLite database and logs
+      - coconut_data:/app/data
+      - coconut_logs:/app/logs
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3001/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - coconut_net
+
+  # ─── Optional: Nginx Reverse Proxy ──────────────────────────────────────────
+  # Uncomment and configure for production with SSL
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: coconut-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - coconut_net
+
+volumes:
+  coconut_data:
+    driver: local
+  coconut_logs:
+    driver: local
+
+networks:
+  coconut_net:
+    driver: bridge

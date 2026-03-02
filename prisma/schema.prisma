@@ -1,0 +1,52 @@
+// ─── Prisma Schema for PostgreSQL (Production Option) ────────────────────────
+//
+// This schema is provided for teams wanting to scale to PostgreSQL.
+// Current deployment uses SQLite via better-sqlite3 (see server/db/database.ts).
+//
+// To migrate to PostgreSQL:
+// 1. Install Prisma: npm install prisma @prisma/client
+// 2. Set DATABASE_URL in .env
+// 3. Run: npx prisma migrate dev
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  waiting
+  making
+  done
+  cancelled
+}
+
+enum OrderSource {
+  line
+  manual
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  queueNumber    String      @map("queue_number")
+  customerName   String?     @map("customer_name")
+  customerLineId String?     @map("customer_line_id")
+  items          Json        @default("[]")
+  totalPrice     Float       @default(0) @map("total_price")
+  pickupTime     String?     @map("pickup_time")
+  status         OrderStatus @default(waiting)
+  priorityScore  Float       @default(0) @map("priority_score")
+  note           String?
+  source         OrderSource @default(manual)
+  rawMessage     String?     @map("raw_message")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([priorityScore(sort: Desc), createdAt(sort: Asc)])
+  @@map("orders")
+}

@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Prompt", "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  /* Coconut Palette */
+  --color-coconut-cream: #FDFBF7;
+  --color-coconut-shell: #8B5E3C;
+  --color-coconut-green: #4F772D;
+  --color-coconut-light: #ECF39E;
+  --color-coconut-dark: #31572C;
+}
+
+body {
+  background-color: var(--color-coconut-cream);
+  color: #1F2937;
+}
