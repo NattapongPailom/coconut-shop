@@ -125,36 +125,40 @@ function extractQuantity(text: string, matchEnd: number): number {
 }
 
 // Specialized weight parser for kg products (มะพร้าวขูด, กะทิสด)
-// Handles Thai weight expressions: โลครึ่ง, 1 โล 2 ขีด, ครึ่งโล, 3 ขีด, etc.
+// Handles any Thai weight expression: โลครึ่ง, 1 โล 2 ขีด, 1 โลกับอีก 2 ขีด, ครึ่งโล, 3 ขีด, etc.
 // Unit conversions: 1 ขีด = 100g = 0.1 กก., ครึ่ง = 0.5 กก.
 function extractWeightKg(text: string, matchEnd: number): number {
-  // Strip leading whitespace/symbols from the text after the product match
-  const s = text.slice(matchEnd, matchEnd + 50).replace(/^[\s:xX×*]+/, '');
+  const s = text.slice(matchEnd, matchEnd + 60).replace(/^[\s:xX×*]+/, '');
 
-  const UNIT = /(?:โล|กิโล|กิโลกรัม|กก)[.]*/;
+  // Thai unit keyword: โล / กิโล / กิโลกรัม / กก (with optional dot)
+  const UNIT = '(?:โล|กิโล|กิโลกรัม|กก)[.]*';
+
+  // Flexible connector between unit and additional quantity:
+  // กับ, อีก, กับอีก, กับ อีก, และ — or just whitespace
+  const CONN = '(?:\\s*(?:กับ\\s*อีก|กับอีก|กับ|อีก|และ)\\s*|\\s*)';
 
   // 1. "ครึ่งโล" / "ครึ่งกิโล" = 0.5 kg
-  if (new RegExp(`^ครึ่ง\\s*${UNIT.source}`).test(s)) return 0.5;
+  if (new RegExp(`^ครึ่ง\\s*${UNIT}`).test(s)) return 0.5;
 
-  // 2. "X โลครึ่ง" / "X กิโลครึ่ง" = X + 0.5 kg  (e.g. 1 โลครึ่ง = 1.5)
-  const withHalf = s.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${UNIT.source}\\s*ครึ่ง`));
+  // 2. "X โล[conn]ครึ่ง" = X + 0.5  e.g. 1 โลครึ่ง / 1 โลกับครึ่ง / 2 กิโล กับ ครึ่ง
+  const withHalf = s.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${UNIT}${CONN}ครึ่ง`));
   if (withHalf) return parseFloat(withHalf[1]) + 0.5;
 
-  // 3. "โลครึ่ง" / "กิโลครึ่ง" (no leading number) = 1.5 kg
-  if (new RegExp(`^${UNIT.source}\\s*ครึ่ง`).test(s)) return 1.5;
+  // 3. "โล[conn]ครึ่ง" (no leading number) = 1.5 kg
+  if (new RegExp(`^${UNIT}${CONN}ครึ่ง`).test(s)) return 1.5;
 
-  // 4. "X โล Y ขีด" = X + Y * 0.1 kg  (e.g. 1 โล 2 ขีด = 1.2)
-  const kiloHecto = s.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${UNIT.source}\\s*(\\d+(?:\\.\\d+)?)\\s*ขีด`));
+  // 4. "X โล[conn]Y ขีด" = X + Y*0.1  e.g. 1 โล 2 ขีด / 1 กิโลกับอีก 3 ขีด
+  const kiloHecto = s.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${UNIT}${CONN}(\\d+(?:\\.\\d+)?)\\s*ขีด`));
   if (kiloHecto) return parseFloat(kiloHecto[1]) + parseFloat(kiloHecto[2]) * 0.1;
 
-  // 5. "Y ขีด" only = Y * 0.1 kg  (e.g. 5 ขีด = 0.5)
+  // 5. "Y ขีด" only = Y * 0.1 kg  e.g. 5 ขีด = 0.5
   const hectoOnly = s.match(/^(\d+(?:\.\d+)?)\s*ขีด/);
   if (hectoOnly) return parseFloat(hectoOnly[1]) * 0.1;
 
-  // 6. "ครึ่ง" alone (no unit keyword) = 0.5 kg
+  // 6. "ครึ่ง" alone = 0.5 kg
   if (/^ครึ่ง/.test(s)) return 0.5;
 
-  // 7. Plain number (with optional unit suffix): 1.5, 2, 1 กก., 2 กิโล
+  // 7. Plain number (with optional unit): 1.5, 2, 1 กก., 2 กิโล
   const plain = s.match(/^(\d+(?:\.\d+)?)/);
   if (plain) return parseFloat(plain[1]);
 
