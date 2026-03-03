@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Server as SocketServer } from 'socket.io';
-import { verifyLineSignature, sendReplyMessage, buildConfirmationFlexMessage, getLineUserProfile } from '../services/lineService.js';
+import { verifyLineSignature, sendReplyMessage, buildConfirmationFlexMessage, buildCancelledFlexMessage, getLineUserProfile } from '../services/lineService.js';
 import { parseOrderMessage, isOrderMessage, buildInvalidFormatReply } from '../services/orderParser.js';
 import { calculatePriorityScore } from '../services/priorityEngine.js';
 import db from '../db/database.js';
@@ -294,9 +294,8 @@ async function handleCancelCommand(
   logger.info('Order cancelled via LINE', { queueNumber, userId });
 
   if (replyToken) {
-    await sendReplyMessage(replyToken, [{
-      type: 'text',
-      text: `✅ ยกเลิกออเดอร์ ${queueNumber} เรียบร้อยแล้วค่ะ 🙏\n\nหากต้องการสั่งใหม่ สามารถส่งออเดอร์มาได้เลยนะคะ 🥥`,
-    }]);
+    const items: { name: string; quantity: number; unit: string }[] = JSON.parse(order.items);
+    const flexMsg = buildCancelledFlexMessage(order.queue_number, items);
+    await sendReplyMessage(replyToken, [flexMsg]);
   }
 }

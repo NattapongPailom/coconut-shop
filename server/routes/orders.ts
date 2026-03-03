@@ -4,7 +4,7 @@ import db from '../db/database.js';
 import { calculatePriorityScore } from '../services/priorityEngine.js';
 import { asyncHandler, createError } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
-import { sendPushMessage, buildMakingFlexMessage, buildDoneFlexMessage } from '../services/lineService.js';
+import { sendPushMessage, buildMakingFlexMessage, buildDoneFlexMessage, buildCancelledFlexMessage } from '../services/lineService.js';
 
 interface OrderRow {
   id: number;
@@ -246,6 +246,15 @@ export function createOrdersRouter(io: SocketServer): Router {
         );
         sendPushMessage(updated.customer_line_id, [flexMsg]).catch((err) =>
           logger.error('Failed to push order-done notification', { error: String(err), id })
+        );
+      }
+
+      // ─── LINE Push: แจ้งลูกค้าเมื่อออเดอร์ถูกยกเลิก (จากหลังบ้าน) ────────
+      if (status === 'cancelled' && updated.customer_line_id) {
+        const items: { name: string; quantity: number; unit: string }[] = JSON.parse(updated.items);
+        const flexMsg = buildCancelledFlexMessage(updated.queue_number, items);
+        sendPushMessage(updated.customer_line_id, [flexMsg]).catch((err) =>
+          logger.error('Failed to push cancelled notification', { error: String(err), id })
         );
       }
 

@@ -139,6 +139,75 @@ export async function sendPushMessage(
   }
 }
 
+// Build Flex Message for cancelled order notification
+export function buildCancelledFlexMessage(
+  queueNumber: string,
+  items: { name: string; quantity: number; unit: string }[]
+): LineFlexMessage {
+  const itemRows = items.map((item) => ({
+    type: 'box',
+    layout: 'horizontal',
+    margin: 'md',
+    contents: [
+      { type: 'text', text: item.name, color: '#9CA3AF', size: 'md', flex: 4, wrap: true },
+      { type: 'text', text: `× ${item.quantity} ${item.unit}`, color: '#9CA3AF', size: 'md', flex: 2, align: 'end' },
+    ],
+  }));
+
+  return {
+    type: 'flex',
+    altText: `❌ ออเดอร์ ${queueNumber} ถูกยกเลิกแล้วค่ะ`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#DC2626',
+        contents: [
+          { type: 'text', text: '❌ ออเดอร์ถูกยกเลิกแล้วค่ะ', color: '#FFFFFF', size: 'lg', weight: 'bold' },
+          { type: 'text', text: 'มะพร้าวเจ๊ประจวบ 🥥', color: '#FECACA', size: 'sm', margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'หมายเลขคิว', color: '#6B7280', size: 'sm', flex: 2 },
+              { type: 'text', text: queueNumber, color: '#DC2626', size: 'xxl', weight: 'bold', flex: 3, align: 'end' },
+            ],
+          },
+          { type: 'separator', margin: 'lg' },
+          { type: 'text', text: 'รายการที่ถูกยกเลิก', color: '#9CA3AF', size: 'sm', margin: 'lg' },
+          ...itemRows,
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '15px',
+        backgroundColor: '#FEF2F2',
+        contents: [
+          {
+            type: 'text',
+            text: 'หากต้องการสั่งใหม่ ส่งออเดอร์มาได้เลยนะคะ 🥥\nขอบคุณค่ะ 🙏',
+            color: '#DC2626',
+            size: 'sm',
+            wrap: true,
+            align: 'center',
+          },
+        ],
+      },
+    },
+  };
+}
+
 // Build Flex Message for "making" status notification
 export function buildMakingFlexMessage(
   queueNumber: string,
