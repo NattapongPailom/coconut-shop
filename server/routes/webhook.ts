@@ -137,6 +137,13 @@ async function processLineEvent(event: LineEvent, io: SocketServer): Promise<voi
     text: text.substring(0, 100),
   });
 
+  // Check for cancel command: "ยกเลิก A03", "ยกเลิกออเดอร์ A03", "cancel A03"
+  const cancelMatch = text.match(/^(?:ยกเลิก(?:ออเดอร์)?|cancel)\s*([A-Ca-c]\d{2})/i);
+  if (cancelMatch) {
+    await handleCancelCommand(io, cancelMatch[1].toUpperCase(), userId, replyToken);
+    return;
+  }
+
   // Check if this looks like an order
   if (!isOrderMessage(text)) {
     logger.debug('Message is not an order, skipping');
@@ -247,5 +254,49 @@ async function processLineEvent(event: LineEvent, io: SocketServer): Promise<voi
     );
 
     await sendReplyMessage(replyToken, [confirmMsg]);
+  }
+}
+
+async function handleCancelCommand(
+  io: SocketServer,
+  queueNumber: string,
+  userId: string | undefined,
+  replyToken: string | undefined
+): Promise<void> {
+  if (!userId) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const order = db
+    .prepare(`
+      SELECT * FROM orders
+      WHERE queue_number = ?
+        AND customer_line_id = ?
+        AND date(created_at) = ?
+        AND status IN ('waiting', 'making')
+    `)
+    .get(queueNumber, userId, today) as OrderRow | undefined;
+
+  if (!order) {
+    if (replyToken) {
+      await sendReplyMessage(replyToken, [{
+        type: 'text',
+        text: `❌ ไม่พบออเดอร์ ${queueNumber} หรือออเดอร์นี้ไม่ใช่ของคุณค่ะ\n(อาจดำเนินการเสร็จแล้ว หรือยกเลิกไปแล้ว)`,
+      }]);
+    }
+    return;
+  }
+
+  const now = new Date().toISOString().replace('T', ' ').split('.')[0];
+  db.prepare(`UPDATE orders SET status = 'cancelled', updated_at = ? WHERE id = ?`)
+    .run(now, order.id);
+
+  io.emit('orders:update', { type: 'cancelled', orderId: String(order.id) });
+  logger.info('Order cancelled via LINE', { queueNumber, userId });
+
+  if (replyToken) {
+    await sendReplyMessage(replyToken, [{
+      type: 'text',
+      text: `✅ ยกเลิกออเดอร์ ${queueNumber} เรียบร้อยแล้วค่ะ 🙏\n\nหากต้องการสั่งใหม่ สามารถส่งออเดอร์มาได้เลยนะคะ 🥥`,
+    }]);
   }
 }

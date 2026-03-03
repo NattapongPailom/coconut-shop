@@ -4,7 +4,7 @@ import db from '../db/database.js';
 import { calculatePriorityScore } from '../services/priorityEngine.js';
 import { asyncHandler, createError } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
-import { sendPushMessage } from '../services/lineService.js';
+import { sendPushMessage, buildMakingFlexMessage } from '../services/lineService.js';
 
 interface OrderRow {
   id: number;
@@ -226,6 +226,15 @@ export function createOrdersRouter(io: SocketServer): Router {
         to: status,
         queueNumber: existing.queue_number,
       });
+
+      // ─── LINE Push: แจ้งลูกค้าเมื่อเริ่มทำ ───────────────────────────────
+      if (status === 'making' && updated.customer_line_id) {
+        const items: { name: string; quantity: number; unit: string }[] = JSON.parse(updated.items);
+        const flexMsg = buildMakingFlexMessage(updated.queue_number, updated.customer_name, items);
+        sendPushMessage(updated.customer_line_id, [flexMsg]).catch((err) =>
+          logger.error('Failed to push making notification', { error: String(err), id })
+        );
+      }
 
       // ─── LINE Push: แจ้งลูกค้าเมื่อออเดอร์เสร็จ ──────────────────────────
       if (status === 'done' && updated.customer_line_id) {

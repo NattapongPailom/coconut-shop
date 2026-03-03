@@ -9,7 +9,13 @@ export interface LineTextMessage {
   text: string;
 }
 
-export type LineMessage = LineTextMessage;
+export interface LineFlexMessage {
+  type: 'flex';
+  altText: string;
+  contents: object;
+}
+
+export type LineMessage = LineTextMessage | LineFlexMessage;
 
 // Verify LINE webhook signature using HMAC-SHA256
 export function verifyLineSignature(rawBody: string, signature: string): boolean {
@@ -131,6 +137,81 @@ export async function sendPushMessage(
     logger.error('Failed to send LINE push', { error: String(err) });
     return false;
   }
+}
+
+// Build Flex Message for "making" status notification
+export function buildMakingFlexMessage(
+  queueNumber: string,
+  customerName: string | null,
+  items: { name: string; quantity: number; unit: string }[]
+): LineFlexMessage {
+  const itemRows = items.map((item) => ({
+    type: 'box',
+    layout: 'horizontal',
+    margin: 'md',
+    contents: [
+      { type: 'text', text: item.name, color: '#374151', size: 'md', flex: 4, wrap: true },
+      { type: 'text', text: `× ${item.quantity} ${item.unit}`, color: '#6B7280', size: 'md', flex: 2, align: 'end' },
+    ],
+  }));
+
+  const bodyContents: object[] = [
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: 'หมายเลขคิว', color: '#6B7280', size: 'sm', flex: 2 },
+        { type: 'text', text: queueNumber, color: '#1D4ED8', size: 'xxl', weight: 'bold', flex: 3, align: 'end' },
+      ],
+    },
+    ...(customerName
+      ? [{ type: 'text', text: `👤 ${customerName}`, color: '#6B7280', size: 'sm', margin: 'md' }]
+      : []),
+    { type: 'separator', margin: 'lg' },
+    { type: 'text', text: 'รายการที่สั่ง', color: '#6B7280', size: 'sm', margin: 'lg' },
+    ...itemRows,
+  ];
+
+  return {
+    type: 'flex',
+    altText: `⏳ ออเดอร์ ${queueNumber} กำลังดำเนินการอยู่ค่ะ`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#2563EB',
+        contents: [
+          { type: 'text', text: '⏳ กำลังทำออเดอร์ของคุณแล้วค่ะ!', color: '#FFFFFF', size: 'lg', weight: 'bold' },
+          { type: 'text', text: 'มะพร้าวเจ๊ประจวบ 🥥', color: '#BFDBFE', size: 'sm', margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        contents: bodyContents,
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '15px',
+        backgroundColor: '#EFF6FF',
+        contents: [
+          {
+            type: 'text',
+            text: 'เราจะแจ้งให้ทราบอีกครั้งเมื่อพร้อมให้มารับค่ะ 😊',
+            color: '#2563EB',
+            size: 'sm',
+            wrap: true,
+            align: 'center',
+          },
+        ],
+      },
+    },
+  };
 }
 
 // Build order confirmation message (Thai)

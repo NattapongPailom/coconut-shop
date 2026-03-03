@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Order, getUrgencyLevel, formatPickupCountdown } from '../types';
-import { Clock, CheckCircle, ChefHat, AlertTriangle, MessageCircle, User } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, AlertTriangle, MessageCircle, User, XCircle } from 'lucide-react';
 
 interface OrderCardProps {
   order: Order;
@@ -9,6 +9,7 @@ interface OrderCardProps {
 }
 
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const isWaiting = order.status === 'waiting';
   const isMaking = order.status === 'making';
   const isDone = order.status === 'done';
@@ -212,6 +213,34 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) =
                 เรียบร้อย (Completed)
               </span>
             </div>
+          )}
+
+          {/* Cancel Button — waiting & making only */}
+          {(isWaiting || isMaking) && (
+            confirmCancel ? (
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => { onUpdateStatus(order.id, 'cancelled'); setConfirmCancel(false); }}
+                  className="flex-1 bg-red-600 hover:bg-red-700 active:scale-95 transition-all text-white text-xl font-bold py-3 rounded-2xl"
+                >
+                  ยืนยันยกเลิก
+                </button>
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  className="flex-1 bg-stone-200 hover:bg-stone-300 active:scale-95 transition-all text-stone-700 text-xl font-bold py-3 rounded-2xl"
+                >
+                  ไม่ยกเลิก
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmCancel(true)}
+                className="w-full mt-1 flex items-center justify-center gap-2 bg-stone-100 hover:bg-red-50 border border-stone-200 hover:border-red-200 active:scale-95 transition-all text-stone-400 hover:text-red-500 text-lg font-semibold py-3 rounded-2xl"
+              >
+                <XCircle className="w-5 h-5" />
+                ยกเลิกออเดอร์
+              </button>
+            )
           )}
         </div>
       </div>
