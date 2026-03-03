@@ -4,7 +4,7 @@ import db from '../db/database.js';
 import { calculatePriorityScore } from '../services/priorityEngine.js';
 import { asyncHandler, createError } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
-import { sendPushMessage, buildMakingFlexMessage } from '../services/lineService.js';
+import { sendPushMessage, buildMakingFlexMessage, buildDoneFlexMessage } from '../services/lineService.js';
 
 interface OrderRow {
   id: number;
@@ -238,35 +238,13 @@ export function createOrdersRouter(io: SocketServer): Router {
 
       // ─── LINE Push: แจ้งลูกค้าเมื่อออเดอร์เสร็จ ──────────────────────────
       if (status === 'done' && updated.customer_line_id) {
-        const items: { name: string; unit: string }[] = JSON.parse(updated.items);
+        const items: { name: string; quantity: number; unit: string }[] = JSON.parse(updated.items);
         const hasDrink = items.some((i) => i.unit === 'แก้ว');
         const hasSolid = items.some((i) => i.unit === 'กก.');
-
-        let text = '';
-        if (hasDrink && hasSolid) {
-          text =
-            `✅ ออเดอร์ ${updated.queue_number} ของคุณพร้อมแล้วนะคะ! 🥤🥥\n\n` +
-            `น้ำมะพร้าวปั่น กรุณามารับภายใน 10 นาที เพื่อความอร่อยสูงสุดนะคะ ` +
-            `ถ้าทิ้งไว้นานน้ำจะละลายและรสชาติเปลี่ยนค่ะ\n\n` +
-            `ส่วนมะพร้าวขูด/กะทิสด สามารถมารับได้ตามเวลาที่นัดไว้เลยนะคะ 😊\n\n` +
-            `รอพบคุณที่ร้านมะพร้าวเจ๊ประจวบค่ะ! 🥥`;
-        } else if (hasDrink) {
-          text =
-            `✅ ออเดอร์ ${updated.queue_number} ของคุณพร้อมแล้วนะคะ! 🥤\n\n` +
-            `กรุณามารับภายใน 10 นาที เพราะน้ำมะพร้าวปั่นจะเริ่มละลายและรสชาติจะเปลี่ยนไปค่ะ ` +
-            `รีบมาลิ้มลองความอร่อยก่อนนะคะ 😊\n\n` +
-            `รอพบคุณที่ร้านมะพร้าวเจ๊ประจวบค่ะ! 🥥`;
-        } else {
-          const pickupNote = updated.pickup_time
-            ? `สามารถมารับได้ตั้งแต่ตอนนี้ถึง ${updated.pickup_time} ตามที่นัดไว้นะคะ 😊`
-            : `สามารถมารับได้เลยตอนนี้เลยนะคะ 😊`;
-          text =
-            `✅ ออเดอร์ ${updated.queue_number} ของคุณพร้อมแล้วนะคะ! 🥥\n\n` +
-            `${pickupNote}\n\n` +
-            `ขอบคุณที่อุดหนุนมะพร้าวเจ๊ประจวบค่ะ! 🙏`;
-        }
-
-        sendPushMessage(updated.customer_line_id, [{ type: 'text', text }]).catch((err) =>
+        const flexMsg = buildDoneFlexMessage(
+          updated.queue_number, items, hasDrink, hasSolid, updated.pickup_time
+        );
+        sendPushMessage(updated.customer_line_id, [flexMsg]).catch((err) =>
           logger.error('Failed to push order-done notification', { error: String(err), id })
         );
       }

@@ -214,35 +214,181 @@ export function buildMakingFlexMessage(
   };
 }
 
-// Build order confirmation message (Thai)
-export function buildConfirmationMessage(
+// Build Flex Message for order confirmation (รับออเดอร์)
+export function buildConfirmationFlexMessage(
   queueNumber: string,
   items: { name: string; quantity: number; pricePerUnit: number }[],
   pickupTime: string | null,
   totalPrice: number
-): LineMessage {
-  const itemLines = items
-    .map(i => `  • ${i.name} × ${i.quantity} = ฿${(i.quantity * i.pricePerUnit).toLocaleString()}`)
-    .join('\n');
+): LineFlexMessage {
+  const itemRows = items.map((item) => ({
+    type: 'box',
+    layout: 'horizontal',
+    margin: 'md',
+    contents: [
+      { type: 'text', text: item.name, color: '#374151', size: 'md', flex: 4, wrap: true },
+      { type: 'text', text: `× ${item.quantity}`, color: '#6B7280', size: 'md', flex: 1, align: 'center' },
+      { type: 'text', text: `฿${(item.quantity * item.pricePerUnit).toLocaleString()}`, color: '#16A34A', size: 'md', weight: 'bold', flex: 2, align: 'end' },
+    ],
+  }));
 
-  const pickupLine = pickupTime
-    ? `⏰ รับสินค้าเวลา: ${pickupTime} น.`
-    : '⏰ ยังไม่ระบุเวลารับ';
+  const bodyContents: object[] = [
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: 'หมายเลขคิว', color: '#6B7280', size: 'sm', flex: 2 },
+        { type: 'text', text: queueNumber, color: '#16A34A', size: 'xxl', weight: 'bold', flex: 3, align: 'end' },
+      ],
+    },
+    { type: 'separator', margin: 'lg' },
+    { type: 'text', text: 'รายการที่สั่ง', color: '#6B7280', size: 'sm', margin: 'lg' },
+    ...itemRows,
+    { type: 'separator', margin: 'lg' },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      margin: 'lg',
+      contents: [
+        { type: 'text', text: 'ยอดรวม', color: '#374151', size: 'md', weight: 'bold', flex: 2 },
+        { type: 'text', text: `฿${totalPrice.toLocaleString()}`, color: '#16A34A', size: 'lg', weight: 'bold', flex: 3, align: 'end' },
+      ],
+    },
+    ...(pickupTime ? [{
+      type: 'box',
+      layout: 'horizontal',
+      margin: 'md',
+      contents: [
+        { type: 'text', text: '⏰ รับสินค้าเวลา', color: '#6B7280', size: 'sm', flex: 2 },
+        { type: 'text', text: `${pickupTime} น.`, color: '#374151', size: 'md', weight: 'bold', flex: 3, align: 'end' },
+      ],
+    }] : []),
+  ];
 
-  const text = [
-    `✅ รับออเดอร์เรียบร้อยค่ะ!`,
-    ``,
-    `🎫 หมายเลขคิว: ${queueNumber}`,
-    ``,
-    `🥥 รายการที่สั่ง:`,
-    itemLines,
-    ``,
-    `💰 ยอดรวม: ฿${totalPrice.toLocaleString()}`,
-    pickupLine,
-    ``,
-    `🙏 กรุณารอรับสินค้าตามเวลาที่นัดไว้ค่ะ`,
-    `ขอบคุณที่อุดหนุนมะพร้าวเจ๊ประจวบ 🥥`,
-  ].join('\n');
+  return {
+    type: 'flex',
+    altText: `✅ รับออเดอร์ ${queueNumber} เรียบร้อยแล้วค่ะ`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#16A34A',
+        contents: [
+          { type: 'text', text: '✅ รับออเดอร์เรียบร้อยแล้วค่ะ!', color: '#FFFFFF', size: 'lg', weight: 'bold' },
+          { type: 'text', text: 'มะพร้าวเจ๊ประจวบ 🥥', color: '#BBF7D0', size: 'sm', margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        contents: bodyContents,
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '15px',
+        backgroundColor: '#FEF2F2',
+        contents: [
+          {
+            type: 'text',
+            text: `❌ หากต้องการยกเลิก พิมพ์:\nยกเลิก ${queueNumber}`,
+            color: '#DC2626',
+            size: 'sm',
+            wrap: true,
+            align: 'center',
+          },
+        ],
+      },
+    },
+  };
+}
 
-  return { type: 'text', text };
+// Build Flex Message for order done (ออเดอร์เสร็จ)
+export function buildDoneFlexMessage(
+  queueNumber: string,
+  items: { name: string; quantity: number; unit: string }[],
+  hasDrink: boolean,
+  hasSolid: boolean,
+  pickupTime: string | null
+): LineFlexMessage {
+  const itemRows = items.map((item) => ({
+    type: 'box',
+    layout: 'horizontal',
+    margin: 'md',
+    contents: [
+      { type: 'text', text: item.name, color: '#374151', size: 'md', flex: 4, wrap: true },
+      { type: 'text', text: `× ${item.quantity} ${item.unit}`, color: '#6B7280', size: 'md', flex: 2, align: 'end' },
+    ],
+  }));
+
+  const headerBg = hasDrink ? '#EA580C' : '#0D9488';
+  const footerBg = hasDrink ? '#FFF7ED' : '#F0FDFA';
+  const footerColor = hasDrink ? '#C2410C' : '#0F766E';
+  const subtitleColor = hasDrink ? '#FED7AA' : '#99F6E4';
+
+  let headerText = '';
+  let footerText = '';
+
+  if (hasDrink && hasSolid) {
+    headerText = '🎉 ออเดอร์พร้อมแล้ว! มารับด่วนนะคะ';
+    footerText = '🥤 กรุณามารับน้ำมะพร้าวภายใน 10 นาทีนะคะ\nส่วนมะพร้าวขูด/กะทิ มารับตามสะดวกได้เลยค่ะ 😊';
+  } else if (hasDrink) {
+    headerText = '🎉 ออเดอร์พร้อมแล้ว! มารับด่วนนะคะ';
+    footerText = '⚡ กรุณามารับภายใน 10 นาทีนะคะ\nน้ำมะพร้าวปั่นจะละลายถ้าทิ้งไว้นานค่ะ 😊';
+  } else {
+    headerText = '🎉 ออเดอร์ของคุณพร้อมแล้วค่ะ!';
+    footerText = pickupTime
+      ? `มารับได้ตั้งแต่ตอนนี้ถึง ${pickupTime} ตามที่นัดไว้นะคะ 😊\nขอบคุณที่อุดหนุนมะพร้าวเจ๊ประจวบค่ะ! 🙏`
+      : 'สามารถมารับได้เลยตอนนี้เลยนะคะ 😊\nขอบคุณที่อุดหนุนมะพร้าวเจ๊ประจวบค่ะ! 🙏';
+  }
+
+  return {
+    type: 'flex',
+    altText: `🎉 ออเดอร์ ${queueNumber} พร้อมให้มารับแล้วค่ะ`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: headerBg,
+        contents: [
+          { type: 'text', text: headerText, color: '#FFFFFF', size: 'lg', weight: 'bold' },
+          { type: 'text', text: 'มะพร้าวเจ๊ประจวบ 🥥', color: subtitleColor, size: 'sm', margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'หมายเลขคิว', color: '#6B7280', size: 'sm', flex: 2 },
+              { type: 'text', text: queueNumber, color: headerBg, size: 'xxl', weight: 'bold', flex: 3, align: 'end' },
+            ],
+          },
+          { type: 'separator', margin: 'lg' },
+          { type: 'text', text: 'รายการที่สั่ง', color: '#6B7280', size: 'sm', margin: 'lg' },
+          ...itemRows,
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '15px',
+        backgroundColor: footerBg,
+        contents: [
+          { type: 'text', text: footerText, color: footerColor, size: 'sm', wrap: true, align: 'center' },
+        ],
+      },
+    },
+  };
 }

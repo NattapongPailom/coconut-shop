@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Server as SocketServer } from 'socket.io';
-import { verifyLineSignature, sendReplyMessage, buildConfirmationMessage, getLineUserProfile } from '../services/lineService.js';
+import { verifyLineSignature, sendReplyMessage, buildConfirmationFlexMessage, getLineUserProfile } from '../services/lineService.js';
 import { parseOrderMessage, isOrderMessage, buildInvalidFormatReply } from '../services/orderParser.js';
 import { calculatePriorityScore } from '../services/priorityEngine.js';
 import db from '../db/database.js';
@@ -246,7 +246,7 @@ async function processLineEvent(event: LineEvent, io: SocketServer): Promise<voi
 
   // Send confirmation reply to LINE
   if (replyToken) {
-    const confirmMsg = buildConfirmationMessage(
+    const confirmMsg = buildConfirmationFlexMessage(
       queueNumber,
       parsed.items,
       parsed.pickupTime,
