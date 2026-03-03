@@ -166,6 +166,9 @@ function App() {
 
   const hasDrink = (o: Order) => o.items.some((i) => i.unit === 'แก้ว');
   const hasSolid = (o: Order) => o.items.some((i) => i.unit === 'กก.');
+  const isMixed  = (o: Order) => hasDrink(o) && hasSolid(o);
+  const isDrinkOnly = (o: Order) => hasDrink(o) && !hasSolid(o);
+  const isSolidOnly = (o: Order) => hasSolid(o) && !hasDrink(o);
 
   const waitingOrders = orders
     .filter((o) => o.status === 'waiting')
@@ -176,10 +179,12 @@ function App() {
     .filter((o) => o.status === 'making')
     .sort((a, b) => b.priorityScore - a.priorityScore);
 
-  const drinkWaiting = waitingOrders.filter(hasDrink);
-  const solidWaiting = waitingOrders.filter(hasSolid);
-  const drinkMaking = makingOrders.filter(hasDrink);
-  const solidMaking = makingOrders.filter(hasSolid);
+  const drinkWaiting = waitingOrders.filter(isDrinkOnly);
+  const solidWaiting = waitingOrders.filter(isSolidOnly);
+  const mixedWaiting = waitingOrders.filter(isMixed);
+  const drinkMaking  = makingOrders.filter(isDrinkOnly);
+  const solidMaking  = makingOrders.filter(isSolidOnly);
+  const mixedMaking  = makingOrders.filter(isMixed);
 
   const dailyRevenue = stats?.dailyRevenue ?? 0;
 
@@ -254,6 +259,32 @@ function App() {
                 emptyMessage="ไม่มีคิวรอขูด/กะทิ — รอออเดอร์ใหม่"
               />
             </div>
+
+            {/* ─── ออเดอร์รวม (น้ำ + ขูด/กะทิ) Section ─────── */}
+            {(mixedMaking.length > 0 || mixedWaiting.length > 0) && (
+              <div className="mb-2">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🥤🥥</span>
+                  <h2 className="text-2xl font-black text-stone-700 tracking-tight">ออเดอร์รวม</h2>
+                  <div className="flex-1 h-0.5 bg-purple-200 rounded" />
+                </div>
+
+                {mixedMaking.length > 0 && (
+                  <OrderGrid
+                    title="กำลังทำ (Making Now)"
+                    orders={mixedMaking}
+                    onUpdateStatus={handleUpdateStatus}
+                  />
+                )}
+
+                <OrderGrid
+                  title="คิวรอทำ (Waiting Queue)"
+                  orders={mixedWaiting}
+                  onUpdateStatus={handleUpdateStatus}
+                  emptyMessage="ไม่มีคิวรอออเดอร์รวม"
+                />
+              </div>
+            )}
 
             {/* History Section */}
             <CompletedOrders orders={completedOrders} />
